@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drive フォルダナビ</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Hiragino Sans', sans-serif;
+  background: #f5f7fa;
+  color: #333;
+  min-height: 100vh;
+}
+.container {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 28px 16px;
+}
+h1 { font-size: 1.4rem; color: #1a73e8; margin-bottom: 4px; }
+.subtitle { font-size: 0.85rem; color: #666; margin-bottom: 24px; }
+
+/* Cards */
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  margin-bottom: 14px;
+}
+.card h2 { font-size: 0.95rem; margin-bottom: 14px; color: #444; }
+
+/* Setup steps */
+.steps {
+  font-size: 0.8rem;
+  color: #555;
+  line-height: 1.9;
+  background: #f8f9fa;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  border-left: 3px solid #1a73e8;
+}
+.steps ol { padding-left: 18px; }
+.steps a { color: #1a73e8; }
+.steps code {
+  background: #e8eaed;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+/* Inputs & buttons */
+.input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.input-row input { flex: 1; min-width: 180px; }
+
+input[type="text"] {
+  padding: 9px 13px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+input[type="text"]:focus { border-color: #1a73e8; }
+
+button {
+  padding: 9px 20px;
+  background: #1a73e8;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, opacity 0.15s;
+}
+button:hover { background: #1558c0; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-outline {
+  background: white;
+  color: #1a73e8;
+  border: 1.5px solid #1a73e8;
+}
+.btn-outline:hover { background: #e8f0fe; }
+.btn-sm { padding: 6px 12px; font-size: 0.78rem; }
+.btn-danger-outline {
+  background: white;
+  color: #c5221f;
+  border: 1.5px solid #c5221f;
+}
+.btn-danger-outline:hover { background: #fce8e6; }
+
+/* Auth bar */
+.auth-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+}
+.auth-bar.ok { background: #e6f4ea; color: #137333; }
+.auth-bar.ng { background: #fef7e0; color: #7d5a00; }
+
+/* Search grid */
+.search-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+@media (max-width: 600px) {
+  .search-grid { grid-template-columns: 1fr; }
+}
+.field label {
+  display: block;
+  font-size: 0.72rem;
+  color: #888;
+  margin-bottom: 4px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.hint { font-size: 0.72rem; color: #aaa; margin-top: 8px; }
+
+/* Status */
+.status-msg {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+  display: none;
+}
+.status-msg.info { background: #e8f0fe; color: #1a73e8; display: block; }
+.status-msg.error { background: #fce8e6; color: #c5221f; display: block; }
+.status-msg.success { background: #e6f4ea; color: #137333; display: block; }
+
+/* Results */
+.results-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+.results-header {
+  padding: 13px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.82rem;
+  color: #666;
+  font-weight: 500;
+}
+.result-item {
+  border-bottom: 1px solid #f5f5f5;
+}
+.result-item:last-child { border-bottom: none; }
+.result-main {
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background 0.12s;
+  cursor: default;
+}
+.result-main:hover { background: #f8faff; }
+.folder-icon { font-size: 1.4rem; flex-shrink: 0; }
+.result-info { flex: 1; min-width: 0; }
+.result-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.result-path {
+  font-size: 0.72rem;
+  color: #999;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.result-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* Upload zone */
+.upload-panel {
+  margin: 0 16px 14px;
+  border: 2px dashed #d0d8e8;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.drop-zone {
+  padding: 18px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 0.82rem;
+  color: #999;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: #1a73e8;
+  background: #f0f6ff;
+  color: #1a73e8;
+}
+.drop-zone input { display: none; }
+
+/* Upload progress items */
+.upload-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  border-top: 1px solid #f0f0f0;
+  font-size: 0.8rem;
+}
+.upload-filename {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.progress-bar {
+  width: 80px;
+  height: 5px;
+  background: #eee;
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.progress-fill {
+  height: 100%;
+  background: #1a73e8;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+.upload-status { width: 50px; text-align: right; font-size: 0.72rem; color: #888; flex-shrink: 0; }
+
+/* Loading */
+.loading-area { padding: 36px; text-align: center; color: #aaa; }
+.spinner {
+  display: inline-block;
+  width: 22px; height: 22px;
+  border: 2.5px solid #e0e0e0;
+  border-top-color: #1a73e8;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-bottom: 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Keyword highlight */
+mark { background: #fff3a3; border-radius: 2px; padding: 0 1px; font-style: normal; }
+
+.hidden { display: none !important; }
+.link { color: #1a73e8; cursor: pointer; text-decoration: underline; font-size: 0.78rem; }
+
+/* Footer */
+.reset-link {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 0.75rem;
+  color: #bbb;
+}
+.reset-link a { color: #bbb; cursor: pointer; }
+.reset-link a:hover { color: #999; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📁 Drive フォルダナビ</h1>
+  <p class="subtitle">顧客名・プロジェクト名・フォルダ種別でGoogleドライブを即検索&アップロード</p>
+
+  <!-- ① 初期設定 -->
+  <div id="setupSection" class="card">
+    <h2>⚙️ 初期設定（初回のみ）</h2>
+    <div class="steps">
+      <ol>
+        <li><a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> にアクセスし、プロジェクトを作成（または既存を選択）</li>
+        <li>「APIとサービス」→「ライブラリ」→ <strong>Google Drive API</strong> を有効化</li>
+        <li>「APIとサービス」→「認証情報」→「認証情報を作成」→「OAuthクライアントID」</li>
+        <li>アプリの種類：<strong>ウェブアプリケーション</strong></li>
+        <li>「承認済みのJavaScriptオリジン」に <code>http://localhost:8080</code> を追加して保存</li>
+        <li>表示された<strong>クライアントID</strong>をコピーして以下に入力</li>
+      </ol>
+    </div>
+    <div class="input-row" style="margin-bottom:10px">
+      <input type="text" id="clientIdInput" placeholder="クライアントID（例：1234567890-xxxx.apps.googleusercontent.com）" />
+      <button onclick="saveClientId()">保存して開始</button>
+    </div>
+    <div style="font-size:0.75rem;color:#aaa;line-height:1.7">
+      ⚠️ このファイルは <code>python3 -m http.server 8080</code> で起動したローカルサーバー上で
+      <code>http://localhost:8080/drive-folder-navi.html</code> として開いてください。<br>
+      <code>file://</code> で直接開くとGoogle認証が動作しません。
+    </div>
+  </div>
+
+  <!-- ② 認証バー -->
+  <div id="authBar" class="auth-bar ng hidden">
+    <span id="authStatus">⚠️ Googleにログインしてください</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="signInBtn" class="btn-outline btn-sm" onclick="signIn()">Googleでログイン</button>
+      <button id="signOutBtn" class="btn-danger-outline btn-sm hidden" onclick="signOut()">ログアウト</button>
+    </div>
+  </div>
+
+  <!-- ③ ステータスメッセージ -->
+  <div id="statusMsg" class="status-msg"></div>
+
+  <!-- ④ 検索フォーム -->
+  <div id="searchSection" class="card hidden">
+    <div class="search-grid">
+      <div class="field">
+        <label>顧客名</label>
+        <input type="text" id="customerInput" placeholder="株式会社ABC" />
+      </div>
+      <div class="field">
+        <label>プロジェクト名</label>
+        <input type="text" id="projectInput" placeholder="Webリニューアル" />
+      </div>
+      <div class="field">
+        <label>フォルダ種別</label>
+        <input type="text" id="folderInput" placeholder="見積" />
+      </div>
+      <div class="field">
+        <button id="searchBtn" onclick="search()">🔍 検索</button>
+      </div>
+    </div>
+    <p class="hint">※ どれか1つだけでも検索可。Enterキーでも検索します。</p>
+  </div>
+
+  <!-- ⑤ 検索結果 -->
+  <div id="resultsSection" class="hidden">
+    <div class="results-card">
+      <div class="results-header" id="resultsHeader"></div>
+      <div id="resultsList"></div>
+    </div>
+  </div>
+
+  <div class="reset-link hidden" id="resetLink">
+    <a onclick="resetSetup()">設定をリセット（クライアントIDを変更する場合）</a>
+  </div>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script>
+'use strict';
+
+let accessToken = null;
+let tokenClient = null;
+const pathCache = new Map();
+
+// ── 初期化 ──────────────────────────────────────────────────────────────────
+
+window.addEventListener('DOMContentLoaded', () => {
+  const savedId = localStorage.getItem('driveNavClientId');
+  if (savedId) {
+    document.getElementById('clientIdInput').value = savedId;
+    showApp(savedId);
+  }
+  ['customerInput', 'projectInput', 'folderInput'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') search();
+    });
+  });
+});
+
+function saveClientId() {
+  const id = document.getElementById('clientIdInput').value.trim();
+  if (!id || !id.includes('.apps.googleusercontent.com')) {
+    return showStatus('有効なクライアントIDを入力してください（.apps.googleusercontent.com で終わるもの）', 'error');
+  }
+  localStorage.setItem('driveNavClientId', id);
+  showApp(id);
+  showStatus('設定を保存しました。Googleでログインしてください。', 'info');
+}
+
+function showApp(clientId) {
+  document.getElementById('setupSection').classList.add('hidden');
+  document.getElementById('authBar').classList.remove('hidden');
+  document.getElementById('searchSection').classList.remove('hidden');
+  document.getElementById('resetLink').classList.remove('hidden');
+  initGIS(clientId);
+}
+
+function resetSetup() {
+  if (!confirm('設定をリセットしますか？クライアントIDを再入力する必要があります。')) return;
+  localStorage.removeItem('driveNavClientId');
+  accessToken = null;
+  tokenClient = null;
+  pathCache.clear();
+  document.getElementById('setupSection').classList.remove('hidden');
+  document.getElementById('authBar').classList.add('hidden');
+  document.getElementById('searchSection').classList.add('hidden');
+  document.getElementById('resultsSection').classList.add('hidden');
+  document.getElementById('resetLink').classList.add('hidden');
+  updateAuthUI(false);
+}
+
+// ── Google Identity Services ─────────────────────────────────────────────────
+
+function initGIS(clientId) {
+  const tryInit = () => {
+    if (typeof google === 'undefined' || !google.accounts?.oauth2) {
+      setTimeout(tryInit, 300);
+      return;
+    }
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/drive',
+      callback: handleTokenResponse,
+    });
+  };
+  tryInit();
+}
+
+function handleTokenResponse(resp) {
+  if (resp.error) {
+    showStatus('ログインに失敗しました: ' + resp.error, 'error');
+    return;
+  }
+  accessToken = resp.access_token;
+  updateAuthUI(true);
+  hideStatus();
+}
+
+function signIn() {
+  if (!tokenClient) return showStatus('クライアントIDを先に設定してください', 'error');
+  tokenClient.requestAccessToken({ prompt: '' });
+}
+
+function signOut() {
+  if (accessToken) {
+    google.accounts.oauth2.revoke(accessToken, () => {});
+    accessToken = null;
+  }
+  pathCache.clear();
+  updateAuthUI(false);
+  document.getElementById('resultsSection').classList.add('hidden');
+}
+
+function updateAuthUI(ok) {
+  const bar = document.getElementById('authBar');
+  bar.className = 'auth-bar ' + (ok ? 'ok' : 'ng');
+  document.getElementById('authStatus').textContent = ok
+    ? '✅ ログイン済み（Googleドライブにアクセス中）'
+    : '⚠️ Googleにログインしてください';
+  document.getElementById('signInBtn').classList.toggle('hidden', ok);
+  document.getElementById('signOutBtn').classList.toggle('hidden', !ok);
+}
+
+// ── Drive API ────────────────────────────────────────────────────────────────
+
+async function driveGet(url) {
+  const resp = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if (resp.status === 401) {
+    // Token expired — request new one silently
+    return new Promise((resolve, reject) => {
+      const origCb = tokenClient.callback;
+      tokenClient.callback = async (r) => {
+        tokenClient.callback = origCb;
+        if (r.error) { reject(new Error(r.error)); return; }
+        accessToken = r.access_token;
+        try { resolve(await driveGet(url)); } catch(e) { reject(e); }
+      };
+      tokenClient.requestAccessToken({ prompt: '' });
+    });
+  }
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${resp.status}`);
+  }
+  return resp.json();
+}
+
+async function searchFoldersByName(keyword) {
+  const q = `mimeType='application/vnd.google-apps.folder' and name contains '${keyword.replace(/'/g,"\\'")}' and trashed=false`;
+  const params = new URLSearchParams({
+    q,
+    fields: 'files(id,name,parents,driveId)',
+    corpora: 'allDrives',
+    includeItemsFromAllDrives: 'true',
+    supportsAllDrives: 'true',
+    pageSize: '40',
+    orderBy: 'name',
+  });
+  const data = await driveGet(`https://www.googleapis.com/drive/v3/files?${params}`);
+  return data.files || [];
+}
+
+async function getFileInfo(id) {
+  if (pathCache.has('info:' + id)) return pathCache.get('info:' + id);
+  const data = await driveGet(
+    `https://www.googleapis.com/drive/v3/files/${id}?fields=name,parents,driveId&supportsAllDrives=true`
+  );
+  pathCache.set('info:' + id, data);
+  return data;
+}
+
+async function getFullPath(fileId) {
+  if (pathCache.has('path:' + fileId)) return pathCache.get('path:' + fileId);
+
+  const parts = [];
+  let currentId = fileId;
+  const visited = new Set();
+
+  while (currentId && !visited.has(currentId)) {
+    visited.add(currentId);
+
+    // If we already know the path up to this node, prepend it
+    if (parts.length > 0 && pathCache.has('path:' + currentId)) {
+      parts.unshift(pathCache.get('path:' + currentId));
+      const result = parts.join(' › ');
+      pathCache.set('path:' + fileId, result);
+      return result;
+    }
+
+    const info = await getFileInfo(currentId);
+    parts.unshift(info.name);
+
+    if (!info.parents?.length) break;
+    // If parent is the drive root itself, stop
+    if (info.driveId && info.driveId === currentId) break;
+    currentId = info.parents[0];
+  }
+
+  const result = parts.join(' › ');
+  pathCache.set('path:' + fileId, result);
+  return result;
+}
+
+// ── 検索 ─────────────────────────────────────────────────────────────────────
+
+async function search() {
+  if (!accessToken) return showStatus('まずGoogleでログインしてください', 'error');
+
+  const customer = document.getElementById('customerInput').value.trim();
+  const project  = document.getElementById('projectInput').value.trim();
+  const folder   = document.getElementById('folderInput').value.trim();
+  const keywords = [customer, project, folder].filter(Boolean);
+
+  if (!keywords.length) return showStatus('少なくとも1つのフィールドを入力してください', 'error');
+
+  hideStatus();
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true;
+
+  const section = document.getElementById('resultsSection');
+  const list    = document.getElementById('resultsList');
+  const header  = document.getElementById('resultsHeader');
+
+  section.classList.remove('hidden');
+  list.innerHTML = `<div class="loading-area"><div class="spinner"></div><p>検索中...</p></div>`;
+  header.textContent = '検索中...';
+
+  try {
+    // 最も具体的なキーワードでまずAPIを叩く（フォルダ種別 > プロジェクト > 顧客）
+    const primaryKey = folder || project || customer;
+    let results = await searchFoldersByName(primaryKey);
+
+    // 2番目のキーワードがあれば追加検索してマージ
+    const secondKey = folder ? (project || customer) : (project ? customer : null);
+    if (secondKey && secondKey !== primaryKey) {
+      const extra = await searchFoldersByName(secondKey);
+      const ids = new Set(results.map(r => r.id));
+      extra.forEach(r => { if (!ids.has(r.id)) results.push(r); });
+    }
+
+    // 各フォルダのフルパスを取得（並列・キャッシュ活用）
+    const withPaths = await Promise.all(
+      results.map(async f => ({ ...f, fullPath: await getFullPath(f.id) }))
+    );
+
+    // クライアント側フィルタ：すべてのキーワードをパスに含むものだけ残す
+    const filtered = withPaths.filter(item =>
+      keywords.every(kw => item.fullPath.toLowerCase().includes(kw.toLowerCase()))
+    );
+
+    // ソート：フォルダ名が最も具体的キーワードと一致するものを上に
+    filtered.sort((a, b) => {
+      const score = item =>
+        keywords.filter(kw => item.name.toLowerCase().includes(kw.toLowerCase())).length;
+      return score(b) - score(a);
+    });
+
+    renderResults(filtered, keywords);
+
+  } catch (err) {
+    console.error(err);
+    showStatus('エラー: ' + err.message, 'error');
+    list.innerHTML = '';
+    header.textContent = '';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── 結果描画 ──────────────────────────────────────────────────────────────────
+
+function renderResults(results, keywords) {
+  const list   = document.getElementById('resultsList');
+  const header = document.getElementById('resultsHeader');
+
+  if (!results.length) {
+    header.textContent = '該当するフォルダが見つかりませんでした';
+    list.innerHTML = `
+      <div class="loading-area" style="color:#aaa">
+        <p>🔍 別のキーワードや表記で試してみてください</p>
+        <p style="font-size:0.75rem;margin-top:6px">フォルダ名の一部でも検索できます</p>
+      </div>`;
+    return;
+  }
+
+  header.textContent = `${results.length}件のフォルダが見つかりました`;
+
+  list.innerHTML = results.map((item, idx) => {
+    const pathParts  = item.fullPath.split(' › ');
+    const folderName = pathParts.at(-1) ?? item.name;
+    const parentPath = pathParts.slice(0, -1).join(' › ');
+    const safeId     = CSS.escape ? CSS.escape(item.id) : item.id.replace(/:/g, '\\:');
+
+    return `
+      <div class="result-item" id="ri-${idx}">
+        <div class="result-main">
+          <div class="folder-icon">📁</div>
+          <div class="result-info">
+            <div class="result-name">${hl(folderName, keywords)}</div>
+            <div class="result-path">${hl(parentPath, keywords)}</div>
+          </div>
+          <div class="result-actions">
+            <button class="btn-outline btn-sm" onclick="openFolder('${item.id}')">↗ 開く</button>
+            <button class="btn-sm" onclick="toggleUpload(${idx})">↑ ここへアップ</button>
+          </div>
+        </div>
+        <div id="up-${idx}" class="upload-panel hidden">
+          <div class="drop-zone" id="dz-${idx}"
+            ondragover="onDragOver(event,${idx})"
+            ondragleave="onDragLeave(${idx})"
+            ondrop="onDrop(event,'${item.id}',${idx})"
+            onclick="document.getElementById('fi-${idx}').click()">
+            <input type="file" id="fi-${idx}" multiple onchange="onFileSelect(event,'${item.id}',${idx})">
+            📄 ここにファイルをドロップ、またはクリックして選択<br>
+            <span style="font-size:0.72rem;color:#ccc">アップ先：${escHtml(item.name)}</span>
+          </div>
+          <div id="ul-${idx}"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function hl(text, keywords) {
+  let s = escHtml(text);
+  keywords.forEach(kw => {
+    if (!kw) return;
+    const re = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    s = s.replace(re, m => `<mark>${m}</mark>`);
+  });
+  return s;
+}
+
+function escHtml(t) {
+  return String(t)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── フォルダを開く ────────────────────────────────────────────────────────────
+
+function openFolder(id) {
+  window.open(`https://drive.google.com/drive/folders/${id}`, '_blank');
+}
+
+// ── アップロードパネル ────────────────────────────────────────────────────────
+
+function toggleUpload(idx) {
+  const el = document.getElementById(`up-${idx}`);
+  el.classList.toggle('hidden');
+}
+
+function onDragOver(e, idx) {
+  e.preventDefault();
+  document.getElementById(`dz-${idx}`).classList.add('drag-over');
+}
+
+function onDragLeave(idx) {
+  document.getElementById(`dz-${idx}`).classList.remove('drag-over');
+}
+
+function onDrop(e, folderId, idx) {
+  e.preventDefault();
+  document.getElementById(`dz-${idx}`).classList.remove('drag-over');
+  uploadFiles(Array.from(e.dataTransfer.files), folderId, idx);
+}
+
+function onFileSelect(e, folderId, idx) {
+  uploadFiles(Array.from(e.target.files), folderId, idx);
+  e.target.value = '';
+}
+
+async function uploadFiles(files, folderId, idx) {
+  const container = document.getElementById(`ul-${idx}`);
+  for (const file of files) {
+    const uid = 'u' + Date.now() + Math.random().toString(36).slice(2);
+    container.insertAdjacentHTML('beforeend', `
+      <div class="upload-item" id="${uid}">
+        <span class="upload-filename">${escHtml(file.name)}</span>
+        <div class="progress-bar"><div class="progress-fill" id="${uid}b" style="width:0"></div></div>
+        <span class="upload-status" id="${uid}s">0%</span>
+      </div>`);
+
+    try {
+      await uploadFile(file, folderId, pct => {
+        document.getElementById(`${uid}b`).style.width = pct + '%';
+        document.getElementById(`${uid}s`).textContent = pct + '%';
+      });
+      document.getElementById(`${uid}s`).textContent = '✅';
+      document.getElementById(`${uid}s`).style.color = '#137333';
+    } catch (err) {
+      document.getElementById(`${uid}s`).textContent = '❌';
+      document.getElementById(`${uid}s`).style.color = '#c5221f';
+      document.getElementById(`${uid}s`).title = err.message;
+    }
+  }
+}
+
+function uploadFile(file, folderId, onProgress) {
+  return new Promise((resolve, reject) => {
+    const boundary = 'driveNavi' + Math.random().toString(36).slice(2);
+    const meta = JSON.stringify({ name: file.name, parents: [folderId] });
+
+    const body = new Blob([
+      `--${boundary}\r\nContent-Type: application/json\r\n\r\n${meta}\r\n`,
+      `--${boundary}\r\nContent-Type: ${file.type || 'application/octet-stream'}\r\n\r\n`,
+      file,
+      `\r\n--${boundary}--`
+    ]);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST',
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true');
+    xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+    xhr.setRequestHeader('Content-Type', `multipart/related; boundary="${boundary}"`);
+
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress(100);
+        resolve(JSON.parse(xhr.responseText));
+      } else {
+        reject(new Error(`Upload ${xhr.status}: ${xhr.responseText}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error('ネットワークエラー'));
+    xhr.send(body);
+  });
+}
+
+// ── ユーティリティ ────────────────────────────────────────────────────────────
+
+function showStatus(msg, type) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = `status-msg ${type}`;
+}
+
+function hideStatus() {
+  document.getElementById('statusMsg').className = 'status-msg';
+}
+</script>
+</body>
+</html>
