@@ -278,7 +278,7 @@ mark { background: #fff3a3; border-radius: 2px; padding: 0 1px; font-style: norm
   <p class="subtitle">顧客名・プロジェクト名・フォルダ種別でGoogleドライブを即検索&アップロード</p>
 
   <!-- ① 初期設定 -->
-  <div id="setupSection" class="card">
+  <div id="setupSection" class="card hidden">
     <h2>⚙️ 初期設定（初回のみ）</h2>
     <div class="steps">
       <ol>
@@ -358,12 +358,10 @@ const pathCache = new Map();
 
 // ── 初期化 ──────────────────────────────────────────────────────────────────
 
+const HARDCODED_CLIENT_ID = '438610117728-mataknr0ps90gf6avli8fa1e8ar1o08k.apps.googleusercontent.com';
+
 window.addEventListener('DOMContentLoaded', () => {
-  const savedId = localStorage.getItem('driveNavClientId');
-  if (savedId) {
-    document.getElementById('clientIdInput').value = savedId;
-    showApp(savedId);
-  }
+  showApp(HARDCODED_CLIENT_ID);
   ['customerInput', 'projectInput', 'folderInput'].forEach(id => {
     document.getElementById(id).addEventListener('keydown', e => {
       if (e.key === 'Enter') search();
