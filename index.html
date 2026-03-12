@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Googleドライブ一括フォルダ検索</title>
+<title>Googleドライブフォルダ検索</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -274,7 +274,7 @@ mark { background: #fff3a3; border-radius: 2px; padding: 0 1px; font-style: norm
 </head>
 <body>
 <div class="container">
-  <h1>Googleドライブ一括フォルダ検索</h1>
+  <h1>📁 Googleドライブフォルダ検索</h1>
   <p class="subtitle">顧客名・プロジェクト名・フォルダ種別でGoogleドライブを即検索&アップロード</p>
 
   <!-- ① 初期設定 -->
@@ -414,16 +414,22 @@ function initGIS(clientId) {
       scope: 'https://www.googleapis.com/auth/drive',
       callback: handleTokenResponse,
     });
+    // 前回ログイン済みなら自動でトークン取得（ポップアップなし）
+    if (localStorage.getItem('driveNavLoggedIn')) {
+      tokenClient.requestAccessToken({ prompt: '' });
+    }
   };
   tryInit();
 }
 
 function handleTokenResponse(resp) {
   if (resp.error) {
-    showStatus('ログインに失敗しました: ' + resp.error, 'error');
+    // 自動ログイン失敗は無視してボタンを表示するだけ
+    localStorage.removeItem('driveNavLoggedIn');
     return;
   }
   accessToken = resp.access_token;
+  localStorage.setItem('driveNavLoggedIn', '1');
   updateAuthUI(true);
   hideStatus();
 }
@@ -438,6 +444,7 @@ function signOut() {
     google.accounts.oauth2.revoke(accessToken, () => {});
     accessToken = null;
   }
+  localStorage.removeItem('driveNavLoggedIn');
   pathCache.clear();
   updateAuthUI(false);
   document.getElementById('resultsSection').classList.add('hidden');
